@@ -1,7 +1,7 @@
 import numpy as np # linear algebra
 import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
 
-path = '/Users/jonghyunchoe/Documents/College/2021_Spring_Semester/창의융합프로젝트/snu-2021-1-ds-project-2/'
+path = '/Users/jonghyunchoe/Documents/Others/GitHub/DS_Project_2/'
 train = pd.read_csv(path +'train.csv')
 test = pd.read_csv(path + 'test.csv')
 submission = pd.read_csv(path + 'sample_submission.csv')
@@ -64,14 +64,15 @@ y = train['label']
 # plt.show()
  
 # Train with selected columns
-sub_x_cols = ['s3', 's4', 's7', 's8'] # ['s1', 's5', 's6', 's14']
+sub_x_cols = ['s1'] # ['s1', 's5', 's6', 's14']
 sub_X = train[sub_x_cols]
 sub_X.head()
 
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor 
 from sklearn.ensemble import GradientBoostingRegressor, AdaBoostRegressor
-from sklearn.linear_model import LinearRegression, Ridge, Lasso   
+from sklearn.linear_model import LinearRegression, Ridge, Lasso
+from sklearn.neighbors import KNeighborsRegressor   
 from lightgbm import LGBMRegressor 
 
 # model = DecisionTreeRegressor()
@@ -81,7 +82,8 @@ from lightgbm import LGBMRegressor
 # model = LinearRegression() 
 # model = Ridge() 
 # model = Lasso() 
-model = LGBMRegressor(n_estimators=1000, learning_rate=0.01)  
+model = KNeighborsRegressor() 
+# model = LGBMRegressor(n_estimators=1000, learning_rate=0.01)  
 # model.fit(sub_X, y)
 
 model_name = type(model).__name__
