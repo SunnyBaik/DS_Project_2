@@ -6,8 +6,8 @@ train = pd.read_csv(path + 'train.csv')
 test = pd.read_csv(path + 'test.csv')
 submission = pd.read_csv(path + 'sample_submission.csv')
 
-x_cols = ['label', 's1'] # ['s1', 's5', 's6', 's14']
-X = train[x_cols].copy()
+# x_cols = ['label', 's1'] # ['s1', 's5', 's6', 's14']
+# X = train[x_cols].copy()
 
 # # 1. Data Preprocessing
 # # 데이터를 50개씩, 1000개씩 묶어서 처리 
@@ -92,12 +92,16 @@ window_df = pd.read_csv(path + 'window_sensor.csv')
 window_X = window_df[['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 't13', 't14', 't15', 't16', 't17', 't18', 't19', 't20', 't21', 't22', 't23', 't24', 't25', 't26', 't27', 't28', 't29', 't30', 't31', 't32', 't33', 't34', 't35', 't36', 't37', 't38', 't39', 't40']].copy()
 window_y = window_df[['label']].copy() 
 
-from sklearn.linear_model import LinearRegression 
+# from sklearn.linear_model import LinearRegression 
+from catboost import CatBoostRegressor
 
-model = LinearRegression()
-# CatBoost
+# model = LinearRegression()
+model = CatBoostRegressor(random_seed = 0, loss_function = 'MAE', iterations = iter)
 
-model.fit(window_X, window_y) 
+# model.fit(window_X, window_y) 
+window_X[['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 't13', 't14', 't15', 't16', 't17', 't18', 't19', 't20', 't21', 't22', 't23', 't24', 't25', 't26', 't27', 't28', 't29', 't30', 't31', 't32', 't33', 't34', 't35', 't36', 't37', 't38', 't39', 't40']] = window_X[['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 't13', 't14', 't15', 't16', 't17', 't18', 't19', 't20', 't21', 't22', 't23', 't24', 't25', 't26', 't27', 't28', 't29', 't30', 't31', 't32', 't33', 't34', 't35', 't36', 't37', 't38', 't39', 't40']].astype(int) 
+window_y[['label']] = window_y[['label']].astype(int) 
+model.fit(window_X, window_y, verbose = False)
 
 # # 2-2. Test Data
 
@@ -118,12 +122,9 @@ test_window_df = pd.read_csv(path + 'test_window_sensor.csv')
 test_window_X = test_window_df[['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 't13', 't14', 't15', 't16', 't17', 't18', 't19', 't20', 't21', 't22', 't23', 't24', 't25', 't26', 't27', 't28', 't29', 't30', 't31', 't32', 't33', 't34', 't35', 't36', 't37', 't38', 't39', 't40']].copy()
 preds = model.predict(test_window_X)
 
-# print(preds) 
-# print(preds[0])
-# print(len(preds[0]))
-
 for i in range(len(preds)):
     if (i*50+49 <= submission.index[-1]):
+        # 예측값이 100 이하면 0으로 처리 
         if (preds[i][0] <= 100):
             preds[i][0] = 0 
         submission.iloc[(i*50):(i*50+50), 1] = preds[i][0]    
@@ -134,17 +135,75 @@ for i in range(len(preds)):
 
 submission.to_csv(path + 'window_predicted_test.csv', index=False)
 
-# submission
-# 0-49, 50-99, 100-149, ... 
-
-# 3. Reduce Noise
-# 이동평균법 
-# 예측값이 100 이하면 0으로 처리 
+submission = pd.read_csv(path + 'window_predicted_test.csv')
   
-# 4. Box Prediction
+# 3. Box Prediction
 # 구간별 알고리즘 적용 
 # 위 예측값으로 구간 통일 
 # start, end, height 예측 
+
+X_test['label'] = 0
+
+start = 0 
+end = 1000 
+increasing = 1
+prev_s1 = X.iloc[0, 3]
+peak = prev_s1 
+trough = prev_s1 
+
+for i in range(0, X_test.index[-1]+1, 1000):
+    next_s1 = X_test.iloc[i, 3]
+    # 이전 구간이 올라가는 구간일 경우 
+    if (increasing):
+        # s1_mean이 내려가면 올라가는 구간을 끝내고 내려가는 구간 시작하기
+        if (next_s1 < prev_s1 and (end - start) >= 8000):
+            # 올라가는 구간 내의 label 값 설정하기
+            predicted_label = submission.iloc[int((start+end)/2), 1] # 이전 값? 
+            print("Rising interval  - start : ", int(start/100), " end: ", int(end/100), " peak: ", peak, " predicted_label: ", predicted_label)
+            if (peak <= 2100):
+                predicted_label = 0
+            if (start/100 >= 10):
+                start = start - 1000
+                end = end - 1000
+            X_test.iloc[start:end, 4] = predicted_label
+
+            increasing = 0
+            start = i
+            end = i + 1000
+            trough = next_s1 
+        # s1_mean이 올라가면 end를 업데이트해 구간 확장하기
+        else:
+            peak = next_s1 
+            end = i + 1000
+
+    # 이전 구간이 내려가는 구간일 경우 
+    else:
+        # s1_mean이 올라가면 내려가는 구간을 끝내고 올라가는 구간 시작하기
+        if (next_s1 >= prev_s1 and (end - start) >= 8000):
+            # 내려가는 구간 내의 label 값 설정하기 
+            predicted_label = submission.iloc[int((start+end)/2), 1] 
+            print("Falling interval - start : ", int(start/100), " end: ", int(end/100), " trough: ", trough, " predicted_label: ", predicted_label)
+            if (trough <= 2100):
+                predicted_label = 0
+            if (start/100 >= 10):
+                start = start - 1000
+                end = end - 1000
+            X_test.iloc[start:end, 4] = predicted_label 
+            
+            increasing = 1
+            start = i 
+            end = i + 1000
+            peak = next_s1 
+        # s1_mean이 내려가면 end를 업데이트해 구간 확장하기 
+        else:
+            trough = next_s1 
+            end = i + 1000
+
+    prev_s1 = next_s1 
+
+X_test['id'] = X_test.index 
+X_test = X_test[['id', 'label']].copy() 
+X_test.to_csv(path + 'window_interval_predicted_test.csv', index=False)
 
 # Sliding Window 개념 찾아보기 
 
