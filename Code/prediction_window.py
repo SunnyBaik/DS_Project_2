@@ -96,7 +96,7 @@ window_y = window_df[['label']].copy()
 from catboost import CatBoostRegressor
 
 # model = LinearRegression()
-model = CatBoostRegressor(random_seed = 0, loss_function = 'MAE', iterations = iter)
+model = CatBoostRegressor(random_seed = 0, loss_function = 'MAE') #, iterations = iter)
 
 # model.fit(window_X, window_y) 
 window_X[['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 't13', 't14', 't15', 't16', 't17', 't18', 't19', 't20', 't21', 't22', 't23', 't24', 't25', 't26', 't27', 't28', 't29', 't30', 't31', 't32', 't33', 't34', 't35', 't36', 't37', 't38', 't39', 't40']] = window_X[['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 't13', 't14', 't15', 't16', 't17', 't18', 't19', 't20', 't21', 't22', 't23', 't24', 't25', 't26', 't27', 't28', 't29', 't30', 't31', 't32', 't33', 't34', 't35', 't36', 't37', 't38', 't39', 't40']].astype(int) 
@@ -125,13 +125,13 @@ preds = model.predict(test_window_X)
 for i in range(len(preds)):
     if (i*50+49 <= submission.index[-1]):
         # 예측값이 100 이하면 0으로 처리 
-        if (preds[i][0] <= 100):
-            preds[i][0] = 0 
-        submission.iloc[(i*50):(i*50+50), 1] = preds[i][0]    
+        if (preds[i] <= 100):
+            preds[i] = 0 
+        submission.iloc[(i*50):(i*50+50), 1] = preds[i]
     else:
-        if (preds[i][0] <= 100):
-            preds[i][0] = 0 
-        submission.iloc[(i*50):(submission.index[-1]+1), 1] = preds[i][0] 
+        if (preds[i] <= 100):
+            preds[i] = 0 
+        submission.iloc[(i*50):(submission.index[-1]+1), 1] = preds[i]
 
 submission.to_csv(path + 'window_predicted_test.csv', index=False)
 
